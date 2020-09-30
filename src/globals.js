@@ -1,6 +1,6 @@
 const { EventEmitter } = require('events');
 global.myRequire = (file) => require('./' + file);
-global.log = (m) => { console.log(`# ${m}`); };
+global.log = (m) => { console.log(`${new Date(Date.now())} # ${m}`); };
 global._ = require('lodash');
 global.Enums = myRequire('core').Enums;
 global.HttpStatus = require('http-status');

@@ -25,7 +25,7 @@ class PostgreSQL {
     clientListener.on('notification', async (msg) => {
       if (msg.channel === this.topicName) {
         const payload = JSON.parse(msg.payload);
-        
+
         switch (payload.f1) {
           case Enums.CRUD.INSERT:
           case Enums.CRUD.UPDATE:
@@ -34,6 +34,9 @@ class PostgreSQL {
               operation: payload.f1,
               data: _.pick(payload.f2, this.sourceConfig.columns),
             });
+            // TODO:
+            // Trim strings here
+            // _.each(_.pick(payload.f2, this.sourceConfig.columns), e => console.log(typeof e));
             break;
         }
       }

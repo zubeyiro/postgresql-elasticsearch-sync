@@ -1,5 +1,6 @@
 const TargetType = {
   INDEX: 'index',
+  PROPERTY: 'property',
   OBJECT: 'object',
   NESTED: 'nested',
 };

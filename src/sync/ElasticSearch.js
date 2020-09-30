@@ -5,13 +5,8 @@ class ElasticSearch {
     this.connectionConfig = connectionConfig;
     this.targetConfig = targetConfig;
     this.jobName = jobName;
-    console.log(this.targetConfig)
     this.clusterUrl = `${this.connectionConfig.api.url}:${this.connectionConfig.api.port}`;
     this.syncIndexName = 'pg_sync';
-
-    // TODO:
-    // configure syncs etc
-    // continue where u left etc
 
     (async () => {
       await this.validateConfigAndBuild();
@@ -20,8 +15,12 @@ class ElasticSearch {
 
   async validateConfigAndBuild() {
     await this.createSyncIndexIfNotExists();
+    // TODO:
     // runSyncConfig()
     // startListening()
+    // configure syncs etc
+    // continue where u left etc
+    // check target index and create
   }
 
   async isIndexExists(index) {
@@ -29,7 +28,9 @@ class ElasticSearch {
 
     if (err) throw new Error('Failed to list indices on cluster');
 
-    return !_.isNil(_.find(JSON.parse(data.body), f => f.index === index));
+    const indexResult = _.find(JSON.parse(data.body), f => f.index === index);
+
+    return !_.isNil(indexResult);
   }
 
   async createSyncIndexIfNotExists() {
@@ -91,6 +92,9 @@ class ElasticSearch {
       case Enums.TargetType.INDEX:
         this.INDEX.upsert(data);
         break;
+      case Enums.TargetType.PROPERTY:
+        this.PROPERTY.upsert(data);
+        break;
       case Enums.TargetType.OBJECT:
         this.OBJECT.insert(data);
         break;
@@ -105,6 +109,9 @@ class ElasticSearch {
       case Enums.TargetType.INDEX:
         this.INDEX.upsert(data);
         break;
+      case Enums.TargetType.PROPERTY:
+        this.PROPERTY.upsert(data);
+        break;
       case Enums.TargetType.OBJECT:
         this.OBJECT.update(data);
         break;
@@ -115,6 +122,7 @@ class ElasticSearch {
   }
 
   async delete(data) {
+    // No delete operation for PROPERTY type
     switch (this.targetConfig.type) {
       case Enums.TargetType.INDEX:
         this.INDEX.delete(data);
@@ -131,30 +139,85 @@ class ElasticSearch {
   get INDEX() {
     return {
       upsert: async (data) => {
-        log("upsert index")
-        console.log(data);
-
         const mappedData = this.mapData(data);
+        const id = mappedData[this.targetConfig.id];
 
-        console.log("# MAPPED")
-        console.log(mappedData)
-        console.log('id', mappedData[this.targetConfig.id])
+        if (_.isNil(id)) return;
 
+        const [err, res] = await to(got.post(`${this.clusterUrl}/${this.targetConfig.index}/_update/${id}`, {
+          json: {
+            doc: mappedData,
+            doc_as_upsert: true
+          },
+          responseType: 'json'
+        }));
 
-        /*
-    POST /orders1/_update/112233
-    {
-      "doc" : {
-        "selami": "sahin"
-        },
-      "doc_as_upsert": true
-    }
-    */
+        if (err) {
+          // TODO: Failed, push this to failed queue with err
+        }
+
+        log(`(${this.jobName}) pushed to ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
       },
       delete: async (data) => {
-        console.log("delete index")
-        //DELETE /orders/_doc/112233
+        const mappedData = this.mapData(data);
+        const id = mappedData[this.targetConfig.id];
+
+        if (_.isNil(id)) return;
+
+        const [err, res] = await to(got.delete(`${this.clusterUrl}/${this.targetConfig.index}/_doc/${id}`));
+
+        if (err) {
+          // TODO: Failed, push this to failed queue with err
+          console.log(err)
+        }
+
+        log(`(${this.jobName}) deleted from ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
       },
+    };
+  }
+
+  get PROPERTY() {
+    return {
+      upsert: async (data) => {
+        // TODO: log all return statements
+        const mappedData = this.mapData(data);
+        const sourceValue = mappedData[this.targetConfig.property.compare.source];
+
+        if (_.isNil(sourceValue)) return;
+
+        const params = _.omit(mappedData, [this.targetConfig.property.compare.source]);
+        const mappings = _.filter(this.targetConfig.mappings, f => f.source_column !== this.targetConfig.property.compare.source);
+
+        if (Object.keys(params).length !== mappings.length) return;
+
+        const script = [];
+
+        _.forOwn(params, (value, key) => {
+          script.push(`ctx._source['${key}'] = params['${key}'];`);
+        });
+
+        const query = {
+          term: {}
+        };
+        query['term'][this.targetConfig.property.compare.target] = sourceValue;
+
+        const [err, res] = await to(got.post(`${this.clusterUrl}/${this.targetConfig.index}/_update_by_query?conflicts=proceed`, {
+          json: {
+            script: {
+              inline: script.join(' '),
+              params: params
+            },
+            query: query
+          },
+          responseType: 'json'
+        }));
+
+        if (err) {
+          // TODO: Failed, push this to failed queue with err
+        }
+
+        log(`(${this.jobName}) pushed to ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
+      }
     };
   }
 

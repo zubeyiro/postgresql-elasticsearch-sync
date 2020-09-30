@@ -39,9 +39,6 @@ class Job {
   }
 
   async listenerCallback(payload) {
-    console.log('Data Received:');
-    console.log(payload)
-
     switch (payload.operation) {
       case Enums.CRUD.INSERT:
         this.target.insert(payload.data);

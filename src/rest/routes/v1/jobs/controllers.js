@@ -13,3 +13,18 @@ const controllers = {
 };
 
 module.exports = controllers;
+
+/*
+TODO:
+  # ADD
+    - check if source exists
+    - check if target exists
+    - start the job
+  # UPDATE
+    - check if source exists
+    - check if target exists
+    - check content changes
+    - reload the job
+  # DELETE
+    - shutdown the job
+*/
