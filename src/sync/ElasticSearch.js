@@ -96,7 +96,7 @@ class ElasticSearch {
         this.PROPERTY.upsert(data);
         break;
       case Enums.TargetType.OBJECT:
-        this.OBJECT.insert(data);
+        this.OBJECT.upsert(data);
         break;
       case Enums.TargetType.NESTED:
         this.NESTED.insert(data);
@@ -113,7 +113,7 @@ class ElasticSearch {
         this.PROPERTY.upsert(data);
         break;
       case Enums.TargetType.OBJECT:
-        this.OBJECT.update(data);
+        this.OBJECT.upsert(data);
         break;
       case Enums.TargetType.NESTED:
         this.NESTED.update(data);
@@ -223,14 +223,51 @@ class ElasticSearch {
 
   get OBJECT() {
     return {
-      insert: async (data) => {
-        console.log("hello insert")
-      },
-      update: async (data) => {
-        console.log("hello update")
+      upsert: async (data) => {
+        const mappedData = this.mapData(data);
+        const id = mappedData[this.targetConfig.id];
+
+        if (_.isNil(id)) return;
+
+        const doc = {};
+        doc[this.targetConfig.object.name] = mappedData;
+
+        const [err, res] = await to(got.post(`${this.clusterUrl}/${this.targetConfig.index}/_update/${id}`, {
+          json: {
+            doc: doc,
+            doc_as_upsert: true
+          },
+          responseType: 'json'
+        }));
+
+        if (err) {
+          // TODO: Failed, push this to failed queue with err
+        }
+
+        log(`(${this.jobName}) pushed object to ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(doc)}`);
       },
       delete: async (data) => {
-        console.log("delete")
+        const mappedData = this.mapData(data);
+        const id = mappedData[this.targetConfig.id];
+
+        if (_.isNil(id)) return;
+
+        const doc = {};
+        doc[this.targetConfig.object.name] = null;
+
+        const [err, res] = await to(got.post(`${this.clusterUrl}/${this.targetConfig.index}/_update/${id}`, {
+          json: {
+            doc: doc,
+            doc_as_upsert: true
+          },
+          responseType: 'json'
+        }));
+
+        if (err) {
+          // TODO: Failed, push this to failed queue with err
+        }
+
+        log(`(${this.jobName}) deleted from ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
       },
     };
   }
@@ -238,25 +275,44 @@ class ElasticSearch {
   get NESTED() {
     return {
       insert: async (data) => {
-        console.log("hello insert nested")
-        /*
-        POST /orders/_update/112233
-        {
-          "script": {
-            "lang": "painless",
-            "source": "ctx._source.tickets.add(params.tickets)",
-            "params": {
-              "tickets": {
-                "id": 3,
-                "row": 7,
-                "seat": "C"
+        const mappedData = this.mapData(data);
+        const id = mappedData[this.targetConfig.id];
+
+        if (_.isNil(id)) return;
+
+        const req = {
+          script: {
+            inline: `if(!ctx._source.containsKey('${this.targetConfig.nested.name}')){ctx._source['${this.targetConfig.nested.name}']=[]}ctx._source['${this.targetConfig.nested.name}'].add(params.data)`,
+            params: {
+              data: mappedData
+            }
+          }
+        };
+
+        console.log(req)
+        console.log(JSON.stringify(req))
+
+        const [err, res] = await to(got.post(`${this.clusterUrl}/${this.targetConfig.index}/_update/${id}`, {
+          json: {
+            script: {
+              inline: `ctx._source['${this.targetConfig.nested.name}'].add(params.data)`,
+              params: {
+                data: mappedData
               }
             }
-      }
-        */
+          },
+          responseType: 'json'
+        }));
+
+        if (err) {
+          // TODO: Failed, push this to failed queue with err
+        }
+
+        log(`(${this.jobName}) pushed nested to ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
       },
       update: async (data) => {
         console.log("hello update nested")
+        console.log(data)
         /*
 POST /orders/_update/112233
 {
@@ -275,6 +331,7 @@ POST /orders/_update/112233
       },
       delete: async (data) => {
         console.log("delete nested")
+        console.log(data)
         /*
     POST /orders/_update/112233
 {

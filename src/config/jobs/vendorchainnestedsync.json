@@ -1,0 +1,63 @@
+{
+  "name": "vendorchainnestedsync",
+  "source": {
+    "name": "psql1",
+    "table_name": "vendor",
+    "columns": [
+      "id",
+      "name",
+      "name_ar",
+      "order_service_type",
+      "chain_id",
+      "modified_date_utc",
+      "vertical_type"
+    ]
+  },
+  "target": {
+    "name": "es1",
+    "index": "chains",
+    "id": "chain_id",
+    "type": "nested",
+    "nested": {
+      "id": "vendor_id",
+      "name": "vendors"
+    },
+    "mappings": [
+      {
+        "source_column": "id",
+        "alias": "vendor_id",
+        "type": "integer"
+      },
+      {
+        "source_column": "name",
+        "alias": "vendor_name_en",
+        "type": "text"
+      },
+      {
+        "source_column": "name_ar",
+        "alias": "vendor_name_ar",
+        "type": "text"
+      },
+      {
+        "source_column": "order_service_type",
+        "alias": "order_service_type",
+        "type": "integer"
+      },
+      {
+        "source_column": "chain_id",
+        "alias": "chain_id",
+        "type": "text"
+      },
+      {
+        "source_column": "modified_date_utc",
+        "alias": "last_updated_at",
+        "type": "text"
+      },
+      {
+        "source_column": "vertical_type",
+        "alias": "vertical",
+        "type": "integer"
+      }
+    ]
+  }
+}

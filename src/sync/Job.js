@@ -59,6 +59,7 @@ class Job {
     // TODO:
     // close source
     // close target etc
+    // notify & stop job
   }
 }
 
