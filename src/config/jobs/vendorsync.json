@@ -1,0 +1,41 @@
+{
+  "name": "vendorsync",
+  "source": {
+    "name": "psql1",
+    "table_name": "vendor",
+    "columns": [
+      "id",
+      "name",
+      "chain_id",
+      "modified_date_utc"
+    ]
+  },
+  "target": {
+    "name": "es1",
+    "index": "vendors",
+    "id": "vendor_id",
+    "type": "index",
+    "mappings": [
+      {
+        "source_column": "id",
+        "alias": "vendor_id",
+        "type": "text"
+      },
+      {
+        "source_column": "name",
+        "alias": "vendor_name",
+        "type": "text"
+      },
+      {
+        "source_column": "chain_id",
+        "alias": "chain_id",
+        "type": "text"
+      },
+      {
+        "source_column": "modified_date_utc",
+        "alias": "last_updated_at",
+        "type": "text"
+      }
+    ]
+  }
+}

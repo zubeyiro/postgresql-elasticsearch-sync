@@ -1,0 +1,10 @@
+{
+  "name": "psql1",
+  "config": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "vendor_portal_local",
+    "user": "vp_application_user",
+    "password": "Test"
+  }
+}

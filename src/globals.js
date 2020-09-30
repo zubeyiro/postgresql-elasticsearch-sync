@@ -1,0 +1,11 @@
+const { EventEmitter } = require('events');
+global.myRequire = (file) => require('./' + file);
+global.log = (m) => { console.log(`# ${m}`); };
+global._ = require('lodash');
+global.Enums = myRequire('core').Enums;
+global.HttpStatus = require('http-status');
+global.express = require('express');
+global.got = require('got');
+global.EventEmitter = new EventEmitter();
+global.configService = myRequire('core/configService');
+global.to = (promise) =>  promise.then(data => [null, data]).catch(err => [err]);
