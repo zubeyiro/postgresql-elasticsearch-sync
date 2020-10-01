@@ -8,4 +8,6 @@ global.express = require('express');
 global.got = require('got');
 global.EventEmitter = new EventEmitter();
 global.configService = myRequire('core/configService');
+global.failHandler = myRequire('failHandler');
+global.syncService = myRequire('sync');
 global.to = (promise) =>  promise.then(data => [null, data]).catch(err => [err]);

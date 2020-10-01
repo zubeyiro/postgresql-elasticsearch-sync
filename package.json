@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/zubeyiro/postgresql-elasticsearch-sync#readme",
   "dependencies": {
+    "aws-sdk": "^2.764.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "express": "^4.17.1",

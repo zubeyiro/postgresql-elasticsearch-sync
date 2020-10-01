@@ -1,10 +1,20 @@
 require('./globals');
 const rest = myRequire('rest');
-const sync = myRequire('sync');
 
-rest.listen(5461, () => {
-  console.log("rest is listening")
+rest.listen(5461, () => { // Put port on config
+  log('REST listening on 5461');
 });
 
-sync.loadJobs();
-sync.start();
+syncService.loadJobs();
+syncService.start();
+failHandler.start();
+
+failHandler.push({
+  job: 'chainsync',
+  task: Enums.CRUD.UPDATE,
+  data: {
+    my: '123',
+    json: 1,
+    data: 123123123
+  }
+});
