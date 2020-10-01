@@ -49,6 +49,18 @@ class Job {
       case Enums.CRUD.DELETE:
         this.target.delete(payload.data);
         break;
+      case Enums.TASK.HOW_MANY_YOU_HAVE:
+        this.source.getTotalDataCount();
+        break;
+      case Enums.TASK.I_HAVE_A_LOT:
+        this.target.setDataForSync(payload.data);
+        break;
+      case Enums.TASK.BRING_MORE_DATA:
+        this.source.getBatch(payload.data.limit, payload.data.offset);
+        break;
+      case Enums.TASK.HERE_IS_YOUR_NEW_DATA:
+        this.target.syncData(payload.data);
+        break;
     }
   }
 

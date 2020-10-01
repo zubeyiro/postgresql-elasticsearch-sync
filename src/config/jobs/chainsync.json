@@ -20,7 +20,7 @@
       {
         "source_column": "id",
         "alias": "chain_id",
-        "type": "text"
+        "type": "integer"
       },
       {
         "source_column": "name",
@@ -40,7 +40,7 @@
       {
         "source_column": "modified_date_utc",
         "alias": "last_updated_at",
-        "type": "text"
+        "type": "date"
       }
     ]
   }

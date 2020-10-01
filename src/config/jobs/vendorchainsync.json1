@@ -11,7 +11,7 @@
   },
   "target": {
     "name": "es1",
-    "index": "vendors",
+    "index": "chains",
     "type": "property",
     "property": {
       "compare": {

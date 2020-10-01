@@ -27,4 +27,5 @@ TODO:
     - reload the job
   # DELETE
     - shutdown the job
+    - DELETE triggers and functions
 */

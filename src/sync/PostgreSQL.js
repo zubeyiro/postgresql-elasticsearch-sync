@@ -95,6 +95,20 @@ class PostgreSQL {
       throw new Error(`Error while creating trigger on table ${this.sourceConfig.table_name}: ${e.message}`);
     }
   }
+
+  async getTotalDataCount() {
+    const res = await this.client.query(`SELECT COUNT(*) FROM ${this.sourceConfig.table_name}`);
+
+    if (res.rows.length === 0) throw new Error('No table resource');
+
+    EventEmitter.emit(this.topicName, { operation: Enums.TASK.I_HAVE_A_LOT, data: res.rows[0].count });
+  }
+
+  async getBatch(limit, offset) {
+    const res = await this.client.query(`SELECT ${this.sourceConfig.columns.join(', ')} FROM ${this.sourceConfig.table_name} LIMIT ${limit} OFFSET ${offset}`);
+
+    EventEmitter.emit(this.topicName, { operation: Enums.TASK.HERE_IS_YOUR_NEW_DATA, data: res.rows });
+  }
 }
 
 module.exports = PostgreSQL;

@@ -5,8 +5,11 @@ class ElasticSearch {
     this.connectionConfig = connectionConfig;
     this.targetConfig = targetConfig;
     this.jobName = jobName;
+    this.topicName = `topic_${this.jobName}`;
     this.clusterUrl = `${this.connectionConfig.api.url}:${this.connectionConfig.api.port}`;
     this.syncIndexName = 'pg_sync';
+    this.isReady = false; // this variable is set to true after all configuration on ES cluster is done, until then all events from source DB will be discarded
+    this.syncBatchSize = 10; // this is for starter sync job, represents each batch size for per sync interval TODO: Change this to 1k
 
     (async () => {
       await this.validateConfigAndBuild();
@@ -14,124 +17,276 @@ class ElasticSearch {
   }
 
   async validateConfigAndBuild() {
+    /*
+    FLOW HERE;
+    - Check sync index and create if not exists, check sync doc for job
+      - If exists
+        - run startSync();
+      - If not exists
+        - Create doc with default values
+        - Request data from PG and listen for answer
+        - When you get answer, update the doc
+        - run startSync();
+    */
     await this.createSyncIndexIfNotExists();
-    // TODO:
-    // runSyncConfig()
-    // startListening()
-    // configure syncs etc
-    // continue where u left etc
-    // check target index and create
+    const syncDoc = await this.getSyncDoc();
+
+    if (_.isNil(syncDoc)) {
+      log('Sync does not started on cluster, configuring it for the first time');
+
+      EventEmitter.emit(this.topicName, { operation: Enums.TASK.HOW_MANY_YOU_HAVE });
+    } else {
+      this.startSync(); // this is async but we dont wait for the response
+    }
   }
 
   async isIndexExists(index) {
-    let [err, data] = await to(got(`${this.clusterUrl}/_cat/indices?format=json`));
+    const [err, data] = await to(got(`${this.clusterUrl}/_cat/indices?format=json`));
 
     if (err) throw new Error('Failed to list indices on cluster');
 
-    const indexResult = _.find(JSON.parse(data.body), f => f.index === index);
+    const result = _.find(JSON.parse(data.body), f => f.index === index);
 
-    return !_.isNil(indexResult);
+    return !_.isNil(result);
   }
 
   async createSyncIndexIfNotExists() {
-    if (!await this.isIndexExists(this.syncIndexName)) {
-      // TODO:
-      var a = [
-        {
-          total_count: 100000,
-          synced_count: 0,
-          last_offset: 1000,
-          is_completed: false,
-          started_at: 1600787712628,
-          last_processed_at: 1600787712630
+    if (await this.isIndexExists(this.syncIndexName)) return;
+
+    log('Sync index does not exist on cluster');
+
+    const [err, data] = await to(got.put(`${this.clusterUrl}/${this.syncIndexName}`, {
+      json: {
+        mappings: {
+          properties: {
+            job: { type: Enums.TargetMappingType.TEXT },
+            last_offset: { type: Enums.TargetMappingType.INTEGER },
+            total_count: { type: Enums.TargetMappingType.INTEGER },
+            is_completed: { type: Enums.TargetMappingType.BOOLEAN },
+            created_at: { type: Enums.TargetMappingType.DATE },
+            last_synced_at: { type: Enums.TargetMappingType.DATE },
+          }
         }
-      ];
-      const [err, data] = await to(got.put(`${this.clusterUrl}/${this.syncIndexName}`, {
+      },
+      responseType: 'json'
+    }));
+
+    if (err && err.response.body.error.type !== 'resource_already_exists_exception') throw new Error(`Can not create sync index on cluster ${this.connectionConfig.name}`);
+
+    log('Sync index has been created on cluster');
+  }
+
+  async getSyncDoc() {
+    const [err, res] = await to(got.get(`${this.clusterUrl}/${this.syncIndexName}/_search?q=job:${this.jobName}`));
+
+    if (err) throw new Error(`Error while getting sync doc: ${err}`);
+
+    return JSON.parse(res.body).hits.hits[0]._source;
+  }
+
+  async setDataForSync(dataCount) {
+    const [err, res] = await to(got.post(`${this.clusterUrl}/${this.syncIndexName}/_update/${this.jobName}`, {
+      json: {
+        doc: {
+          job: this.jobName,
+          last_offset: 0,
+          total_count: dataCount,
+          is_completed: false,
+          created_at: (new Date()).getTime(),
+          last_synced_at: (new Date()).getTime(),
+        },
+        doc_as_upsert: true
+      },
+      responseType: 'json'
+    }));
+
+    if (err) throw new Error(`Error while creating sync doc on ES cluster: ${err}`);
+
+    log('Created sync doc on cluster');
+
+    this.startSync(); // this is async but we dont wait for the response
+  }
+
+  async startSync() {
+    /*
+    FLOW HERE:
+    - set isReady=true so that it'll start processing events from DB
+    - Get latest configuration from ES
+      - If its completed, do nothing
+      - If its not completed
+        - Request data from PG from where you left and listen for it
+        - When its done, mark job as done
+    */
+    await this.createTargetIndexIfNotExists();
+
+    this.isReady = true; // setting this true so events coming from DB will be processed from now on
+
+    const syncDoc = await this.getSyncDoc();
+
+    if (_.isNil(syncDoc)) throw new Error('Error while getting sync doc'); // this should not happen
+    if (syncDoc.is_completed) return log('General sync is already done');
+    if ((parseInt(syncDoc.total_count) - parseInt(this.syncBatchSize)) <= parseInt(syncDoc.last_offset)) {
+      // if sync job already completed but somehow has not been marked as completed yet, mark it for the next run
+      log('General sync is already done')
+      return await this.updateSyncDoc({ is_completed: true });
+    }
+
+    // request first batch from data source, remaining part will be recursive
+    EventEmitter.emit(this.topicName, {
+      operation: Enums.TASK.BRING_MORE_DATA,
+      data: {
+        limit: this.syncBatchSize,
+        offset: syncDoc.last_offset,
+      }
+    });
+  }
+
+  async syncData(data) {
+    log(`new batch arrived for sync, ${data.length} rows`);
+
+    if (data.length === 0) {
+      log('No more data, stopping sync');
+
+      return await this.updateSyncDoc({ is_completed: true });
+    }
+
+    const syncDoc = await this.getSyncDoc();
+    const start = (new Date()).getTime();
+
+    for (let i = 0; i < data.length; i++) {
+      await this.insert(data[i]);
+    }
+
+    const newOffset = parseInt(syncDoc.last_offset) + data.length;
+    await this.updateSyncDoc({ last_offset: newOffset });
+
+    const timeSpent = (new Date()).getTime() - start;
+    log(`${data.length} rows have been processed (${timeSpent}), requesting new batch`);
+
+    EventEmitter.emit(this.topicName, {
+      operation: Enums.TASK.BRING_MORE_DATA,
+      data: {
+        limit: this.syncBatchSize,
+        offset: newOffset,
+      }
+    });
+  }
+
+  async updateSyncDoc(updateContent) {
+    updateContent['last_synced_at'] = (new Date()).getTime();
+    const [err, res] = await to(got.post(`${this.clusterUrl}/${this.syncIndexName}/_update/${this.jobName}`, {
+      json: {
+        doc: updateContent,
+        doc_as_upsert: true
+      },
+      responseType: 'json'
+    }));
+
+    if (err) {
+      // this error is not a blocker, even if we continue from last offset its not a problem since its an upsert op
+      log(`ERROR while updating sync doc: ${err}`);
+    }
+
+    log(`(${this.jobName}) sync doc updated at ${this.targetConfig.name}: ${JSON.stringify(updateContent)}`);
+  }
+
+  async createTargetIndexIfNotExists() {
+    /*
+   FLOW HERE:
+   - Check if index exists
+    - If so
+      - TODO: check mappings (by type)
+    - If not
+      - create with proper mappings (by type)
+   */
+    if (!(await this.isIndexExists(this.targetConfig.index))) {
+      log(`Target index has not been created yet, creating index ${this.targetConfig.index}`);
+
+      const properties = {};
+
+      switch (this.targetConfig.type) {
+        case Enums.TargetType.INDEX:
+          _.each(this.targetConfig.mappings, e => { properties[e.alias] = { type: e.type }; });
+          break;
+        case Enums.TargetType.PROPERTY:
+          _.each(this.targetConfig.mappings, e => { properties[e.alias] = { type: e.type }; });
+          break;
+        case Enums.TargetType.OBJECT:
+          const props = {};
+          _.each(this.targetConfig.mappings, e => { props[e.alias] = { type: e.type }; });
+          properties[this.targetConfig.object.name] = { properties: props };
+          break;
+        case Enums.TargetType.NESTED:
+          properties[this.targetConfig.nested.name] = { type: Enums.TargetType.NESTED };
+          break;
+      }
+
+      const [err, res] = await to(got.put(`${this.clusterUrl}/${this.targetConfig.index}`, {
         json: {
           mappings: {
-            properties: {
-              order_id: { type: Enums.TargetMappingType.INTEGER },
-              order_created_on: { type: Enums.TargetMappingType.DATE },
-              order_status: { type: Enums.TargetMappingType.TEXT },
-            }
+            properties: properties
           }
         },
         responseType: 'json'
       }));
 
-      if (err && err.response.body.error.type !== 'resource_already_exists_exception') throw new Error(`Can not create sync index on cluster ${this.connectionConfig.name}`);
+      if (err) throw new Error(`Error while creating target index: ${err}`);
+
+      log(`index ${this.targetConfig.index} has been created`);
     }
   }
 
-  async checkAndCreateMapping() {
-    /*
-
-    
-    Check if index exists
-
-      If so;
-        If this is index;
-          compare mapping
-            If there are new mappings, add
-        If this is property;
-            check if it exists in mapping
-
-      If not;
-        If this is index;
-        If this is property;
-    */
-    // check if index exists
-    // if not create index
-
-
-    // if its sub doc, check if exists on mapping, if not then create it
-  }
-
   async insert(data) {
+    if (!this.isReady) return;
+
     switch (this.targetConfig.type) {
       case Enums.TargetType.INDEX:
-        this.INDEX.upsert(data);
+        await this.INDEX.upsert(data);
         break;
       case Enums.TargetType.PROPERTY:
-        this.PROPERTY.upsert(data);
+        await this.PROPERTY.upsert(data);
         break;
       case Enums.TargetType.OBJECT:
-        this.OBJECT.upsert(data);
+        await this.OBJECT.upsert(data);
         break;
       case Enums.TargetType.NESTED:
-        this.NESTED.insert(data);
+        await this.NESTED.insert(data);
         break;
     }
   }
 
   async update(data) {
+    if (!this.isReady) return;
+
     switch (this.targetConfig.type) {
       case Enums.TargetType.INDEX:
-        this.INDEX.upsert(data);
+        await this.INDEX.upsert(data);
         break;
       case Enums.TargetType.PROPERTY:
-        this.PROPERTY.upsert(data);
+        await this.PROPERTY.upsert(data);
         break;
       case Enums.TargetType.OBJECT:
-        this.OBJECT.upsert(data);
+        await this.OBJECT.upsert(data);
         break;
       case Enums.TargetType.NESTED:
-        this.NESTED.update(data);
+        await this.NESTED.update(data);
         break;
     }
   }
 
   async delete(data) {
+    if (!this.isReady) return;
+
     // No delete operation for PROPERTY type
     switch (this.targetConfig.type) {
       case Enums.TargetType.INDEX:
-        this.INDEX.delete(data);
+        await this.INDEX.delete(data);
         break;
       case Enums.TargetType.OBJECT:
-        this.OBJECT.delete(data);
+        await this.OBJECT.delete(data);
         break;
       case Enums.TargetType.NESTED:
-        this.NESTED.delete(data);
+        await this.NESTED.delete(data);
         break;
     }
   }
@@ -280,22 +435,10 @@ class ElasticSearch {
 
         if (_.isNil(id)) return;
 
-        const req = {
-          script: {
-            inline: `if(!ctx._source.containsKey('${this.targetConfig.nested.name}')){ctx._source['${this.targetConfig.nested.name}']=[]}ctx._source['${this.targetConfig.nested.name}'].add(params.data)`,
-            params: {
-              data: mappedData
-            }
-          }
-        };
-
-        console.log(req)
-        console.log(JSON.stringify(req))
-
         const [err, res] = await to(got.post(`${this.clusterUrl}/${this.targetConfig.index}/_update/${id}`, {
           json: {
             script: {
-              inline: `ctx._source['${this.targetConfig.nested.name}'].add(params.data)`,
+              inline: `if(!ctx._source.containsKey('${this.targetConfig.nested.name}')){ctx._source['${this.targetConfig.nested.name}']=[]}ctx._source['${this.targetConfig.nested.name}'].add(params.data)`,
               params: {
                 data: mappedData
               }
@@ -311,39 +454,52 @@ class ElasticSearch {
         log(`(${this.jobName}) pushed nested to ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
       },
       update: async (data) => {
-        console.log("hello update nested")
-        console.log(data)
-        /*
-POST /orders/_update/112233
-{
-  "script": {
-    "source": "def targets = ctx._source.tickets.findAll(it -> it.id == params.doc.id); for (nest in targets) { for (change in params.doc.entrySet()) { nest[change.getKey()] = change.getValue() } }",
-    "params": {
-      "doc": {
-        "id": 1,
-        "seat": "F",
-        "row": 101
-      }
-    }
-  }
-}
-    */
+        const mappedData = this.mapData(data);
+        const id = mappedData[this.targetConfig.id];
+
+        if (_.isNil(id)) return;
+
+        const [err, res] = await to(got.post(`${this.clusterUrl}/${this.targetConfig.index}/_update/${id}`, {
+          json: {
+            script: {
+              inline: `if(ctx._source.containsKey('${this.targetConfig.nested.name}')){def targets = ctx._source['${this.targetConfig.nested.name}'].findAll(it -> it['${this.targetConfig.nested.id}'] == params.data['${this.targetConfig.nested.id}']); for (nest in targets) { for (change in params.data.entrySet()) { nest[change.getKey()] = change.getValue() } }}`,
+              params: {
+                data: mappedData
+              }
+            }
+          },
+          responseType: 'json'
+        }));
+
+        if (err) {
+          // TODO: Failed, push this to failed queue with err
+        }
+
+        log(`(${this.jobName}) updated nested at ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
       },
       delete: async (data) => {
-        console.log("delete nested")
-        console.log(data)
-        /*
-    POST /orders/_update/112233
-{
-  "script": {
-    "lang": "painless",
-    "source": "ctx._source.tickets.removeIf(it -> it.id == params.id)",
-    "params": {
-      "id": 2
-    }
-  }
-}
-    */
+        const mappedData = this.mapData(data);
+        const id = mappedData[this.targetConfig.id];
+
+        if (_.isNil(id)) return;
+
+        const [err, res] = await to(got.post(`${this.clusterUrl}/${this.targetConfig.index}/_update/${id}`, {
+          json: {
+            script: {
+              inline: `if(ctx._source.containsKey('${this.targetConfig.nested.name}')){ctx._source['${this.targetConfig.nested.name}'].removeIf(it -> it['${this.targetConfig.nested.id}'] == params.data['${this.targetConfig.nested.id}'])}`,
+              params: {
+                data: mappedData
+              }
+            }
+          },
+          responseType: 'json'
+        }));
+
+        if (err) {
+          // TODO: Failed, push this to failed queue with err
+        }
+
+        log(`(${this.jobName}) deleted nested from ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
       },
     };
   }
