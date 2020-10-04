@@ -1,17 +1,24 @@
-const path = require('path');
 const AWS = require('aws-sdk');
-AWS.config.loadFromPath(path.join(__dirname, '..', 'config', 'aws.json')); // TODO: Config
-const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
-const queueURL = 'https://sqs.eu-west-1.amazonaws.com/790357599697/pg-es-queue'; // TODO: config
+let sqs;
+let queueURL = '';
+let isFailHandlerActive = false;
 
 const failHandler = {
   start: () => {
-    // TODO: Check config and work according to, if there is then work, otherwise discard
-    setInterval(failHandler.receive, 1000) // TODO: change this interval
+    if (_.isNil(process.env.AWS_ACCESS_KEY_ID) || _.isNil(process.env.AWS_SECRET_ACCESS_KEY) || _.isNil(process.env.AWS_REGION) || _.isNil(process.env.AWS_SQS_URL)) return;
+
+    queueURL = process.env.AWS_SQS_URL;
+    AWS.config.update({ region: process.env.AWS_REGION });
+    sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
+    isFailHandlerActive = true;
+
+    setInterval(failHandler.receive, 1000 * 60)
   },
   receive: async () => {
+    if (!isFailHandlerActive) return;
+
     const params = {
-      AttributeNames: ["SentTimestamp"],
+      AttributeNames: [],
       MaxNumberOfMessages: 10,
       MessageAttributeNames: ["All"],
       QueueUrl: queueURL,
@@ -26,18 +33,25 @@ const failHandler = {
       for (const m of result.Messages) {
         const message = JSON.parse(m.Body);
 
-        if (!_.has(message, 'job') || !_.has(message, 'task') || !_.has(message, 'data')){
+        if (!_.has(message, 'topic') || !_.has(message, 'operation') || !_.has(message, 'data')) {
           await failHandler.delete(m.MessageId, m.ReceiptHandle);
-          
+
           continue;
         }
-        // TODO: process, redirect input to proper job
-        console.log(message)
-        //await failHandler.delete(m.MessageId, m.ReceiptHandle);
+
+        // Publish message again so related job can catch it
+        EventEmitter.emit(message.topic, {
+          operation: message.operation,
+          data: message.data,
+        });
+
+        await failHandler.delete(m.MessageId, m.ReceiptHandle);
       }
     }
   },
   push: async (data) => {
+    if (!isFailHandlerActive) return;
+
     const params = {
       DelaySeconds: 30,
       MessageAttributes: {},
@@ -51,6 +65,8 @@ const failHandler = {
     log(`Message pushed to SQS (${result.MessageId}): ${JSON.stringify(data)}`);
   },
   delete: async (messageId, receiptHandle) => {
+    if (!isFailHandlerActive) return;
+
     const params = {
       QueueUrl: queueURL,
       ReceiptHandle: receiptHandle,

@@ -9,7 +9,7 @@ class ElasticSearch {
     this.clusterUrl = `${this.connectionConfig.api.url}:${this.connectionConfig.api.port}`;
     this.syncIndexName = 'pg_sync';
     this.isReady = false; // this variable is set to true after all configuration on ES cluster is done, until then all events from source DB will be discarded
-    this.syncBatchSize = 10; // this is for starter sync job, represents each batch size for per sync interval TODO: Change this to 1k
+    this.syncBatchSize = 1000; // this is for starter sync job, represents each batch size for per sync interval
 
     (async () => {
       await this.validateConfigAndBuild();
@@ -195,7 +195,7 @@ class ElasticSearch {
    FLOW HERE:
    - Check if index exists
     - If so
-      - TODO: check mappings (by type)
+      - TODO: check mappings (by type) and update, next version
     - If not
       - create with proper mappings (by type)
    */
@@ -308,7 +308,12 @@ class ElasticSearch {
         }));
 
         if (err) {
-          // TODO: Failed, push this to failed queue with err
+          // Send failed op to AWS if its configured
+          failHandler.push({
+            topic: this.topicName,
+            operation: Enums.CRUD.INSERT,
+            data: data,
+          });
         }
 
         log(`(${this.jobName}) pushed to ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
@@ -322,8 +327,12 @@ class ElasticSearch {
         const [err, res] = await to(got.delete(`${this.clusterUrl}/${this.targetConfig.index}/_doc/${id}`));
 
         if (err) {
-          // TODO: Failed, push this to failed queue with err
-          console.log(err)
+          // Send failed op to AWS if its configured
+          failHandler.push({
+            topic: this.topicName,
+            operation: Enums.CRUD.DELETE,
+            data: data,
+          });
         }
 
         log(`(${this.jobName}) deleted from ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
@@ -334,7 +343,6 @@ class ElasticSearch {
   get PROPERTY() {
     return {
       upsert: async (data) => {
-        // TODO: log all return statements
         const mappedData = this.mapData(data);
         const sourceValue = mappedData[this.targetConfig.property.compare.source];
 
@@ -368,7 +376,12 @@ class ElasticSearch {
         }));
 
         if (err) {
-          // TODO: Failed, push this to failed queue with err
+          // Send failed op to AWS if its configured
+          failHandler.push({
+            topic: this.topicName,
+            operation: Enums.CRUD.INSERT,
+            data: data,
+          });
         }
 
         log(`(${this.jobName}) pushed to ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
@@ -396,7 +409,12 @@ class ElasticSearch {
         }));
 
         if (err) {
-          // TODO: Failed, push this to failed queue with err
+          // Send failed op to AWS if its configured
+          failHandler.push({
+            topic: this.topicName,
+            operation: Enums.CRUD.INSERT,
+            data: data,
+          });
         }
 
         log(`(${this.jobName}) pushed object to ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(doc)}`);
@@ -419,7 +437,12 @@ class ElasticSearch {
         }));
 
         if (err) {
-          // TODO: Failed, push this to failed queue with err
+          // Send failed op to AWS if its configured
+          failHandler.push({
+            topic: this.topicName,
+            operation: Enums.CRUD.DELETE,
+            data: data,
+          });
         }
 
         log(`(${this.jobName}) deleted from ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
@@ -448,7 +471,12 @@ class ElasticSearch {
         }));
 
         if (err) {
-          // TODO: Failed, push this to failed queue with err
+          // Send failed op to AWS if its configured
+          failHandler.push({
+            topic: this.topicName,
+            operation: Enums.CRUD.INSERT,
+            data: data,
+          });
         }
 
         log(`(${this.jobName}) pushed nested to ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
@@ -472,7 +500,12 @@ class ElasticSearch {
         }));
 
         if (err) {
-          // TODO: Failed, push this to failed queue with err
+          // Send failed op to AWS if its configured
+          failHandler.push({
+            topic: this.topicName,
+            operation: Enums.CRUD.UPDATE,
+            data: data,
+          });
         }
 
         log(`(${this.jobName}) updated nested at ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);
@@ -496,7 +529,12 @@ class ElasticSearch {
         }));
 
         if (err) {
-          // TODO: Failed, push this to failed queue with err
+          // Send failed op to AWS if its configured
+          failHandler.push({
+            topic: this.topicName,
+            operation: Enums.CRUD.DELETE,
+            data: data,
+          });
         }
 
         log(`(${this.jobName}) deleted nested from ${this.targetConfig.name}/${this.targetConfig.index}: ${JSON.stringify(mappedData)}`);

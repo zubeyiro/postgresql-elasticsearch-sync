@@ -67,11 +67,8 @@ class Job {
   async shutdown() {
     log(`Shutting down ${this.config.name}`);
     EventEmitter.removeListener(this.source.TopicName, this.listenerCallback);
-
-    // TODO:
-    // close source
-    // close target etc
-    // notify & stop job
+    this.source.dispose();
+    log(`${this.config.name} shut down`);
   }
 }
 

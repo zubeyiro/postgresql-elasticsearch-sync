@@ -34,9 +34,6 @@ class PostgreSQL {
               operation: payload.f1,
               data: _.pick(payload.f2, this.sourceConfig.columns),
             });
-            // TODO:
-            // Trim strings here
-            // _.each(_.pick(payload.f2, this.sourceConfig.columns), e => console.log(typeof e));
             break;
         }
       }
@@ -108,6 +105,16 @@ class PostgreSQL {
     const res = await this.client.query(`SELECT ${this.sourceConfig.columns.join(', ')} FROM ${this.sourceConfig.table_name} LIMIT ${limit} OFFSET ${offset}`);
 
     EventEmitter.emit(this.topicName, { operation: Enums.TASK.HERE_IS_YOUR_NEW_DATA, data: res.rows });
+  }
+
+  async dispose() {
+    try {
+      await this.client.query(`DROP TRIGGER ${this.triggerName} ON ${this.sourceConfig.table_name};`);
+      await this.client.query(`DROP FUNCTION ${this.functionName};`);
+      await this.client.release();
+    } catch (e) {
+      log(`Error while disposing source: ${e}`);
+    }
   }
 }
 
