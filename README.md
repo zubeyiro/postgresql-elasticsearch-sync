@@ -1,7 +1,7 @@
 # PostgreSQL ElasticSearch Synchronization
 This application provides multiple types of data sync options from PostgreSQL to ElasticSearch.
 
-## How does it work
+## How does it work
 For each syncronization jobs, first it makes overall syncronization (pushes all data to ElasticSearch cluster), and then it uses `LISTEN/NOTIFY` functionality of PostgreSQL.
 
 ## Syncronization Types
