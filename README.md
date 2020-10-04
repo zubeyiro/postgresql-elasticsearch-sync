@@ -95,8 +95,9 @@ GET /sources/:name
 ```
 
 **Body Parameters**
+
 | Parameter | Description | Required |
-| --- | --- |
+| --- | --- | --- |
 | name | name for data sources, alphanumeric | Yes |
 | config.host | host for PostgreSQL database | Yes |
 | config.port | port for PostgreSQL database | Yes |
