@@ -1,4 +1,4 @@
-# PostgreSQL ElasticSearch Synchronization
+# PostgreSQL ElasticSearch Synchronization Tool
 This application provides multiple types of data sync options from PostgreSQL to ElasticSearch.
 
 ## How does it work
@@ -21,21 +21,15 @@ OBJECT sync is the type that you can add object with nested properties to existi
 ### NESTED sync
 NESTED sync is the type that you can add nested objects (arrays) to existing index on Elastic Search cluster.
 
-
 ## Configuration
-This application has 3 different type of configs
+This application has 3 different types of configs
 
-- Source
-Source represents PostgreSQL database which application will sync data from, each source should be added separately and named properly
-
-- Target
-Target represents ElasticSearch cluster which application will sync data to, each target should be added separately and named properly
-
-- Job
-Job represents each independent syncronization job. Application supports multiple jobs at a time.
+1. **Source:** Represents PostgreSQL database which application will sync data from, each source should be added separately and named properly
+2. **Target:** Represents ElasticSearch cluster which application will sync data to, each target should be added separately and named properly
+3. **Job:** Represents each independent syncronization job. Application supports multiple jobs at a time.
 
 ## How to make configuration
-Application have REST API that you can add/update/delete sources/targets/jobs runtime, REST documentation is at the end of this document. In order to set PORT for REST API, just set the environment variable PORT, or it will serve from default port which is **5461**.
+Application have REST API that you can make `CRUD` operations on `sources/targets/jobs` runtime, REST documentation is at the end of this document. In order to set PORT for REST API, just set the environment variable PORT, or it will serve from default port which is **5461**.
 
 ## Handling Fails
 Application configured to have AWS SQS for failed processes. In any case any sync operation fails, it'll push data to SQS queue and will try again after 1 minute.
