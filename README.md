@@ -4,6 +4,9 @@ This application provides multiple types of data sync options from PostgreSQL to
 ## How does it work
 For each syncronization jobs, first it makes overall syncronization (pushes all data to ElasticSearch cluster), and then it uses `LISTEN/NOTIFY` functionality of PostgreSQL.
 
+## How to run
+`AWS_ACCESS_KEY_ID='' AWS_SECRET_ACCESS_KEY='' AWS_REGION='' AWS_SQS_URL='' PORT='8080' node src/`
+
 ## Syncronization Types
 
 ### INDEX sync
