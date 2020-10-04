@@ -233,6 +233,21 @@ GET /jobs/:name
 
 | Parameter | Description | Required |
 | --- | --- | --- |
-| name | name for ElasticSearch cluster, alphanumeric | Yes |
-| api.url | API URL for ElasticSearch | Yes |
-| api.port | API port for ElasticSearch | Yes |
+| name | Name for the job, alphanumeric | Yes |
+| source.name | source PostgreSQL database that you have already created via /sources | Yes |
+| source.table_name | table name to sync data from | Yes |
+| source.columns | columns to sync | Yes |
+| target.name | target ElasticSearch cluster that you have already created via /targets | Yes |
+| target.index | index name to sync on ElasticSearch cluster | Yes |
+| target.type | 'index', 'property', 'object', 'nested | Yes |
+| target.id | id field (alias) that'll be used on index | Yes (No if target.type is 'property') |
+| target.property.compare.source | source column that will be used for join comparison | Only if target.type is 'property' |
+| target.property.compare.target | target column that will be used for join comparison | Only if target.type is 'property' |
+| target.object.name | property alias that object will be stored on doc | Only if target.type is 'object' |
+| target.nested.id | id for each object inside nested | Only if target.type is 'nested' |
+| target.nested.name | property alias that nested will be stored on doc | Only if target.type is 'nested' |
+
+| mappings | Array | Yes |
+| mappings.source_column | source column name on PostgreSQL | Yes |
+| mappings.alias | Alias for the column on ElasticSearch | Yes |
+| mappings.type | 'integer', 'float', 'text', 'date', 'boolean', 'ip', 'object', 'nested'| Yes |
