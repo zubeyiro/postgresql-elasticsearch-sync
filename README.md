@@ -250,4 +250,4 @@ GET /jobs/:name
 | mappings | Array | Yes |
 | mappings.source_column | source column name on PostgreSQL | Yes |
 | mappings.alias | Alias for the column on ElasticSearch | Yes |
-| mappings.type | 'integer', 'float', 'text', 'date', 'boolean', 'ip', 'object', 'nested'| Yes |
+| mappings.type | 'integer', 'float', 'text', 'date', 'boolean', 'ip', 'object', 'nested' | Yes |
