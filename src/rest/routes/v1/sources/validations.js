@@ -26,3 +26,5 @@ const validations = {
 };
 
 module.exports = validations;
+
+// TODO: remove endpoints
