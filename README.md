@@ -246,8 +246,8 @@ GET /jobs/:name
 | target.object.name | property alias that object will be stored on doc | Only if target.type is 'object' |
 | target.nested.id | id for each object inside nested | Only if target.type is 'nested' |
 | target.nested.name | property alias that nested will be stored on doc | Only if target.type is 'nested' |
-
 | mappings | Array | Yes |
 | mappings.source_column | source column name on PostgreSQL | Yes |
 | mappings.alias | Alias for the column on ElasticSearch | Yes |
 | mappings.type | 'integer', 'float', 'text', 'date', 'boolean', 'ip', 'object', 'nested' | Yes |
+
