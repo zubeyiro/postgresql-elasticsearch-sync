@@ -1,5 +1,3 @@
-const { map } = require("lodash");
-
 class ElasticSearch {
   constructor(connectionConfig, targetConfig, jobName) {
     this.connectionConfig = connectionConfig;
