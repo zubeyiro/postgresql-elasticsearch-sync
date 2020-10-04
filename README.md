@@ -236,7 +236,7 @@ GET /jobs/:name
 | name | Name for the job, alphanumeric | Yes |
 | source.name | source PostgreSQL database that you have already created via /sources | Yes |
 | source.table_name | table name to sync data from | Yes |
-| source.columns | columns to sync | Yes |
+| source.columns | columns to sync, string array | Yes |
 | target.name | target ElasticSearch cluster that you have already created via /targets | Yes |
 | target.index | index name to sync on ElasticSearch cluster | Yes |
 | target.type | 'index', 'property', 'object', 'nested | Yes |
