@@ -159,3 +159,80 @@ GET /targets/:name
 | name | name for ElasticSearch cluster, alphanumeric | Yes |
 | api.url | API URL for ElasticSearch | Yes |
 | api.port | API port for ElasticSearch | Yes |
+
+### Jobs
+Create/Update/Delete sync jobs on application
+
+**Create job:**
+```
+POST /jobs
+{
+  "name": "",
+  "source": {
+    "name": "",
+    "table_name": "",
+    "columns": ["column_name1", "column_name2"]
+  },
+  "target": {
+    "name": "",
+    "index": "",
+    "id": "",
+    "type": "",
+  "mappings": [
+    {
+      "source_column": "",
+      "alias": "",
+      "type": ""
+    }
+  ]
+  }
+}
+```
+
+**Update job:**
+```
+PUT /jobs/:name
+{
+  "source": {
+    "name": "",
+    "table_name": "",
+    "columns": ["column_name1", "column_name2"]
+  },
+  "target": {
+    "name": "",
+    "index": "",
+    "id": "",
+    "type": "",
+  "mappings": [
+    {
+      "source_column": "",
+      "alias": "",
+      "type": ""
+    }
+  ]
+  }
+}
+```
+
+**Delete job:**
+```
+DELETE /jobs/:name
+```
+
+**List job:**
+```
+GET /jobs
+```
+
+**Get job:**
+```
+GET /jobs/:name
+```
+
+**Job Request Body**
+
+| Parameter | Description | Required |
+| --- | --- | --- |
+| name | name for ElasticSearch cluster, alphanumeric | Yes |
+| api.url | API URL for ElasticSearch | Yes |
+| api.port | API port for ElasticSearch | Yes |
