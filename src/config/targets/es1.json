@@ -1,7 +1,0 @@
-{
-  "name": "es1",
-  "api": {
-    "url": "http://localhost",
-    "port": 9200
-  }
-}
