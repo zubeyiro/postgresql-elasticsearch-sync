@@ -36,7 +36,7 @@ Application have REST API that you can add/update/delete sources/targets/jobs ru
 
 ## Handling Fails
 Application configured to have AWS SQS for failed processes. In any case any sync operation fails, it'll push data to SQS queue and will try again after 1 minute.
-AWS SQS is optional, in order to use just set the following environment variables and its done.
+AWS SQS is optional, in order to use it just set the following environment variables and its done.
 
 ```
 AWS_ACCESS_KEY_ID=''
@@ -110,3 +110,52 @@ GET /sources/:name
 | config.database | database name on instance/cluster | Yes |
 | config.user | username for PostgreSQL database | Yes |
 | config.password | password for PostgreSQL database | Yes |
+
+### Targets
+Create/Update/Delete ElasticSeaarch clusters on application
+
+**Create target:**
+```
+POST /targets
+{
+  "name": "",
+  "api": {
+    "url": "",
+    "port": 
+  }
+}
+```
+
+**Update target:**
+```
+PUT /targets/:name
+{
+  "api": {
+    "url": "",
+    "port": 
+  }
+}
+```
+
+**Delete target:**
+```
+DELETE /targets/:name
+```
+
+**List target:**
+```
+GET /targets
+```
+
+**Get target:**
+```
+GET /targets/:name
+```
+
+**Body Parameters**
+
+| Parameter | Description | Required |
+| --- | --- | --- |
+| name | name for ElasticSearch cluster, alphanumeric | Yes |
+| api.url | API URL for ElasticSearch | Yes |
+| api.port | API port for ElasticSearch | Yes |
