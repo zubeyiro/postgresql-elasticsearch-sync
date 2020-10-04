@@ -63,15 +63,30 @@ const validations = {
     target: Joi.object({
       name: Joi.string().alphanum().min(2).max(50).required(),
       index: Joi.string().min(2).max(500).required(),
-      id: Joi.string().min(2).max(500).required(),
+      id: Joi.string().min(2).max(500).when('type', { is: Enums.TargetType.PROPERTY, then: Joi.optional(), otherwise: Joi.required() }),
       type: Joi.string().valid(
         Enums.TargetType.INDEX,
+        Enums.TargetType.PROPERTY,
         Enums.TargetType.OBJECT,
         Enums.TargetType.NESTED,
       ).required(),
-      object_name: Joi.string().min(2).max(500).when('type', { is: Enums.TargetType.OBJECT, then: Joi.required(), otherwise: Joi.optional() }),
-      nested_name: Joi.string().min(2).max(500).when('type', { is: Enums.TargetType.NESTED, then: Joi.required(), otherwise: Joi.optional() }),
-      nested_id: Joi.string().min(2).max(500).when('type', { is: Enums.TargetType.NESTED, then: Joi.required(), otherwise: Joi.optional() }),
+
+      property: Joi.object({
+        compare: Joi.object({
+          source: Joi.string().min(2).max(500).required(),
+          target: Joi.string().min(2).max(500).required(),
+        }).required(),
+      }).when('type', { is: Enums.TargetType.PROPERTY, then: Joi.required(), otherwise: Joi.optional() }),
+
+      object: Joi.object({
+        name: Joi.string().min(2).max(500).required(),
+      }).when('type', { is: Enums.TargetType.OBJECT, then: Joi.required(), otherwise: Joi.optional() }),
+
+      nested: Joi.object({
+        id: Joi.string().min(2).max(500).required(),
+        name: Joi.string().min(2).max(500).required(),
+      }).when('type', { is: Enums.TargetType.NESTED, then: Joi.required(), otherwise: Joi.optional() }),
+
       mappings: Joi.array().items(Joi.object({
         source_column: Joi.string().required(),
         alias: Joi.string().min(2).max(500).required(),
@@ -92,5 +107,4 @@ const validations = {
 
 module.exports = validations;
 
-// TODO: Update validations for put endpoint
 // TODO: Content validations for each endpoint Jobs
