@@ -3,11 +3,15 @@ const ElasticSearch = myRequire('sync/ElasticSearch');
 
 class Job {
   constructor(config) {
+    (async () => {
+      await this.build(config);
+    })();
+  }
+
+  async build(config) {
     this.config = config;
 
-    (async () => {
-      await this.validateResources();
-    })();
+    await this.validateResources();
   }
 
   async validateResources() {
@@ -67,8 +71,16 @@ class Job {
   async shutdown() {
     log(`Shutting down ${this.config.name}`);
     EventEmitter.removeListener(this.source.TopicName, this.listenerCallback);
-    this.source.dispose();
+    await this.source.dispose();
+    await this.target.dispose();
     log(`${this.config.name} shut down`);
+  }
+
+  async restart(config) {
+    log(`restarting ${this.config.name}`);
+    await this.shutdown();
+    await this.build(config);
+    this.start();
   }
 }
 

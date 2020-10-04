@@ -81,7 +81,11 @@ class ElasticSearch {
 
     if (err) throw new Error(`Error while getting sync doc: ${err}`);
 
-    return JSON.parse(res.body).hits.hits[0]._source;
+    const body = JSON.parse(res.body);
+
+    if (_.isArray(body.hits.hits) && body.hits.hits.length > 0) return body.hits.hits[0]._source;
+
+    return null;
   }
 
   async setDataForSync(dataCount) {
@@ -104,7 +108,7 @@ class ElasticSearch {
 
     log('Created sync doc on cluster');
 
-    this.startSync(); // this is async but we dont wait for the response
+    setTimeout(this.startSync.bind(this), 1000);// this is async but we dont wait for the response, putting 1sec await for ES to take affect of doc
   }
 
   async startSync() {
@@ -117,6 +121,7 @@ class ElasticSearch {
         - Request data from PG from where you left and listen for it
         - When its done, mark job as done
     */
+    await this.createTargetIndexIfNotExists();
     await this.createTargetIndexIfNotExists();
 
     this.isReady = true; // setting this true so events coming from DB will be processed from now on
@@ -551,6 +556,10 @@ class ElasticSearch {
     }, {}); // generate final mapped object
 
     return ret;
+  }
+
+  async dispose() {
+    log(`disposed ${this.jobName} ES cluster`);
   }
 }
 

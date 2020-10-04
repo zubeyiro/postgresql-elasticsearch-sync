@@ -10,22 +10,7 @@ const controllers = {
     };
     res.status(HttpStatus.OK).send(configService.jobs.update(update));
   },
+  delete: async (req, res) => { res.status(HttpStatus.OK).send(configService.jobs.delete(req.params.name)); },
 };
 
 module.exports = controllers;
-
-/*
-TODO:
-  # ADD
-    - check if source exists
-    - check if target exists
-    - start the job
-  # UPDATE
-    - check if source exists
-    - check if target exists
-    - check content changes
-    - reload the job
-  # DELETE
-    - shutdown the job
-    - DELETE triggers and functions
-*/

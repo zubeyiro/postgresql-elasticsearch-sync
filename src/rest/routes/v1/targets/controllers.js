@@ -7,14 +7,10 @@ const controllers = {
       name: req.params.name,
       api: req.body.api
     };
+
     res.status(HttpStatus.OK).send(configService.targets.update(update));
   },
+  delete: async (req, res) => { res.status(HttpStatus.OK).send(configService.targets.delete(req.params.name)); },
 };
 
 module.exports = controllers;
-
-/*
-TODO:
-  # DELETE
-    - check if there are any jobs using it
-*/

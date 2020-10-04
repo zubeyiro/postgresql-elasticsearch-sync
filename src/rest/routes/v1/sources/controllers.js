@@ -9,12 +9,7 @@ const controllers = {
     };
     res.status(HttpStatus.OK).send(configService.sources.update(update));
   },
+  delete: async (req, res) => { res.status(HttpStatus.OK).send(configService.sources.delete(req.params.name)); },
 };
 
 module.exports = controllers;
-
-/*
-TODO:
-  # DELETE
-    - check if there are any jobs using it
-*/

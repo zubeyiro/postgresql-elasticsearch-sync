@@ -8,9 +8,10 @@ class PostgreSQL {
   constructor(connectionConfig, sourceConfig, jobName) {
     this.connectionConfig = connectionConfig;
     this.sourceConfig = sourceConfig;
-    this.topicName = `topic_${jobName}`;
-    this.functionName = `func_${jobName}`;
-    this.triggerName = `trg_${jobName}`;
+    this.jobName = jobName;
+    this.topicName = `topic_${this.jobName}`;
+    this.functionName = `func_${this.jobName}`;
+    this.triggerName = `trg_${this.jobName}`;
     this.client = new Client(this.connectionConfig.config);
     this.templatesPath = path.join(__dirname, 'templates');
 
@@ -111,7 +112,9 @@ class PostgreSQL {
     try {
       await this.client.query(`DROP TRIGGER ${this.triggerName} ON ${this.sourceConfig.table_name};`);
       await this.client.query(`DROP FUNCTION ${this.functionName};`);
-      await this.client.release();
+      await this.client.end();
+
+      log(`disposed ${this.jobName} PostgreSQL connection`);
     } catch (e) {
       log(`Error while disposing source: ${e}`);
     }

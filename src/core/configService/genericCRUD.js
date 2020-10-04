@@ -14,7 +14,7 @@ const genericCRUD = {
       ));
   },
   get: (scope, name) => {
-    return _.find(genericCRUD.list(scope), f => f.name === name) || {};
+    return _.find(genericCRUD.list(scope), f => f.name === name) || null;
   },
   update: (scope, config) => {
     if (_.isEmpty(genericCRUD.get(scope, config.name))) return {
@@ -33,6 +33,16 @@ const genericCRUD = {
     };
 
     const result = IO.nano(path.join(configPath, scope, `${config.name}.json`), JSON.stringify(config, null, 2));
+
+    return { result: result };
+  },
+  delete: (scope, name) => {
+    if (_.isEmpty(genericCRUD.get(scope, name))) return {
+      result: false,
+      data: 'There is no source with this name'
+    };
+
+    const result = IO.rm(path.join(configPath, scope, `${name}.json`));
 
     return { result: result };
   },

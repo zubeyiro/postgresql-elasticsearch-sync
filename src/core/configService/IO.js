@@ -12,7 +12,8 @@ const IO = {
 
       return files;
     } catch (e) {
-      // TODO: log the error
+      log(`Error while listing the directory: ${e}`);
+
       return [];
     }
 
@@ -23,7 +24,8 @@ const IO = {
 
       return fs.readFileSync(filePath, 'utf8');
     } catch (e) {
-      // TODO: log the error
+      log(`Error while getting the content of the file: ${e}`);
+
       return '';
     }
   },
@@ -33,7 +35,19 @@ const IO = {
 
       return true;
     } catch (e) {
-      // TODO: log the error
+      log(`Error while updating the content of the file: ${e}`);
+
+      return false;
+    }
+  },
+  rm: (filePath) => {
+    try {
+      fs.unlinkSync(filePath);
+
+      return true;
+    } catch (e) {
+      log(`Error while deleting file: ${e}`);
+
       return false;
     }
   },

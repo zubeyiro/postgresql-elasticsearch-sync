@@ -106,5 +106,3 @@ const validations = {
 };
 
 module.exports = validations;
-
-// TODO: Content validations for each endpoint Jobs

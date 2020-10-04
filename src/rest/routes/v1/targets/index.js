@@ -7,5 +7,6 @@ router.get('/', controllers.list);
 router.get('/:name', controllers.get);
 router.post('/', validator.body(validations.createBody), controllers.create);
 router.put('/:name', validator.params(validations.updateParams), validator.body(validations.updateBody), controllers.update);
+router.delete('/:name', controllers.delete);
 
 module.exports = router;
