@@ -239,7 +239,7 @@ GET /jobs/:name
 | source.columns | columns to sync, string array | Yes |
 | target.name | target ElasticSearch cluster that you have already created via /targets | Yes |
 | target.index | index name to sync on ElasticSearch cluster | Yes |
-| target.type | 'index', 'property', 'object', 'nested | Yes |
+| target.type | 'index', 'property', 'object', 'nested' | Yes |
 | target.id | id field (alias) that'll be used on index | Yes (No if target.type is 'property') |
 | target.property.compare.source | source column that will be used for join comparison | Only if target.type is 'property' |
 | target.property.compare.target | target column that will be used for join comparison | Only if target.type is 'property' |
