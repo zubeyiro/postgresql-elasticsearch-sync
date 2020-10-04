@@ -2,7 +2,7 @@
 This application provides multiple types of data sync options from PostgreSQL to ElasticSearch.
 
 ## How does it work
-For each syncronization jobs, first it makes overall syncronization (pushes all data to ElasticSearch cluster), and then it uses `LISTEN/NOTIFY` functionality of PostgreSQL
+For each syncronization jobs, first it makes overall syncronization (pushes all data to ElasticSearch cluster), and then it uses `LISTEN/NOTIFY` functionality of PostgreSQL.
 
 ## Syncronization Types
 
@@ -44,6 +44,12 @@ AWS_SECRET_ACCESS_KEY=''
 AWS_REGION=''
 AWS_SQS_URL=''
 ```
+
+## Requirements
+PostgreSQL database users on each source must have following privileges;
+- CREATE FUNCTION
+- CREATE TRIGGER
+- run LISTEN command
 
 ## REST API
 
@@ -104,10 +110,3 @@ GET /sources/:name
 | config.database | database name on instance/cluster | Yes |
 | config.user | username for PostgreSQL database | Yes |
 | config.password | password for PostgreSQL database | Yes |
-
-
-## Requirements
-PostgreSQL database user provided to application must have following privileges;
-- CREATE FUNCTION
-- CREATE TRIGGER
-- run LISTEN command
